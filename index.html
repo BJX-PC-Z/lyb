@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>开放文档编辑</title>
+  <style>
+    body { font-family: 'Helvetica Neue',Arial,sans-serif; background: #fafafa; margin: 0; padding: 0; }
+    .container { max-width: 700px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px #eee; }
+    h1 { font-size: 2em; margin-bottom: 0.8em; }
+    textarea { width: 100%; min-height: 320px; font-size: 1em; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 14px; resize: vertical; }
+    button { padding: 8px 24px; border: none; background: #007aff; color: #fff; border-radius: 6px; cursor: pointer; font-size: 1em; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .tip { color: #888; font-size: 0.98em; margin-bottom: 18px; }
+    @media (max-width: 700px) { .container { margin: 0; border-radius: 0; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>开放文档编辑</h1>
+    <div class="tip">所有人都能编辑和保存这份文档，内容会实时同步到仓库文件，刷新即可看到最新内容。请勿输入敏感信息！</div>
+    <textarea id="docContent" placeholder="正在加载文档内容..."></textarea>
+    <button id="saveBtn">保存</button>
+  </div>
+  <script>
+    // ====== 请在下方填写你的仓库信息和Token ======
+    const owner = 'BJX-PC-Z';      // 你的GitHub用户名，例如 BJX-PC-Z
+    const repo = 'lyb';            // 仓库名，例如 open-doc
+    const filename = 'doc.txt';           // 文档文件名（建议用 doc.txt 或 doc.md）
+    const GITHUB_TOKEN = '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'; // 只做测试用，勿公开在互联网上
+    // =========================================
+
+    const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+    const textarea = document.getElementById('docContent');
+    const saveBtn = document.getElementById('saveBtn');
+    let sha = ''; // 用于文件更新
+
+    // 1. 加载文档内容
+    async function loadDoc() {
+      textarea.value = '正在加载...';
+      const res = await fetch(apiBase, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.status === 404) {
+        textarea.value = '';
+        sha = '';
+        return;
+      }
+      const data = await res.json();
+      const content = atob(data.content.replace(/\n/g, ''));
+      textarea.value = content;
+      sha = data.sha;
+    }
+
+    // 2. 保存文档内容
+    saveBtn.onclick = async function() {
+      saveBtn.disabled = true;
+      const newContent = textarea.value;
+      const body = {
+        message: 'Update doc.txt by web editor',
+        content: btoa(unescape(encodeURIComponent(newContent))),
+        sha: sha || undefined
+      };
+      const res = await fetch(apiBase, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        alert('保存成功，刷新页面即可看到最新内容！');
+        loadDoc();
+      } else {
+        alert('保存失败！请检查Token权限或API限制。');
+      }
+      saveBtn.disabled = false;
+    };
+
+    // 3. 初始化
+    loadDoc();
+  </script>
+</body>
+</html>
